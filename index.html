@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Community Run: Dynamic Registration & Result Fetching | Group 3 OS Project</title>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <!-- CDN QR Code Generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- CDN HTML5 QR Camera Scanner -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+
+  <!-- ============================================================================
+       TOP HEADER & SYSTEM STATUS
+       ============================================================================ -->
+  <header class="app-header">
+    <div class="header-content">
+      <div class="brand-wrapper">
+        <div class="brand-icon">🏃‍♂️</div>
+        <div class="brand-title">
+          <h1>Community Run <span class="highlight">OS Memory Simulator</span></h1>
+          <div class="brand-subtitle">
+            <span>Group 3 OS Project</span>
+            <span class="badge-tag badge-group3">Segmentation &amp; Demand Paging</span>
+            <span>Single-Page Desk</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="mmu-pulse-indicator" id="kernelStatusIndicator">
+          <div class="pulse-dot"></div>
+          <span>MMU ONLINE</span>
+        </div>
+        <button id="btnPresentationGuide" class="btn btn-secondary btn-sm">
+          🎓 How to Demo
+        </button>
+        <button id="btnHeavyLoadTop" class="btn btn-warning btn-sm" title="Simulate rapid lookups and evictions">
+          ⚡ Heavy Load
+        </button>
+        <button id="btnResetAll" class="btn btn-secondary btn-sm" title="Reset state to demo defaults">
+          🔄 Reset Demo
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============================================================================
+       SINGLE-PAGE TWO-PANEL MASTER VIEWPORT
+       ============================================================================ -->
+  <main class="main-viewport">
+
+    <!-- ------------------------------------------------------------------------
+         LEFT PANEL: RACE DAY OPERATIONS (Registration, Runners, Bib & QR, Cert)
+         ------------------------------------------------------------------------ -->
+    <section class="panel-column left-panel">
+
+      <!-- SECTION 1: SIMPLE REGISTRATION FORM -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3>📝 Quick Registration</h3>
+            <p style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
+              Enter details to auto-assign a bib &amp; allocate a page on secondary storage.
+            </p>
+          </div>
+          <span class="header-tag">01 / REGISTRATION</span>
+        </div>
+        <div class="card-body">
+          <form id="registrationForm" autocomplete="off">
+            <div class="form-grid">
+
+              <!-- Full Name -->
+              <div class="form-group col-span-2">
+                <label for="regName">Full Name *</label>
+                <input type="text" id="regName" placeholder="e.g. Courteney Jill Bobby" required maxlength="80">
+              </div>
+
+              <!-- Matric Number (No. Matrik) -->
+              <div class="form-group">
+                <label for="regMatric">Matric Number (No. Matrik) *</label>
+                <input type="text" id="regMatric" placeholder="e.g. 07DEE23F1046" required maxlength="25">
+              </div>
+
+              <!-- Race Category -->
+              <div class="form-group">
+                <label for="regCategory">Race Category *</label>
+                <select id="regCategory" required>
+                  <option value="5K Fun Run" selected>5K Fun Run (Bibs 1001+ · Seg 0)</option>
+                  <option value="10K Challenge">10K Challenge (Bibs 2001+ · Seg 1)</option>
+                  <option value="21K Half Marathon">21K Half Marathon (Bibs 3001+ · Seg 2)</option>
+                </select>
+              </div>
+
+              <!-- Email Address -->
+              <div class="form-group col-span-2">
+                <label for="regEmail">Email Address *</label>
+                <input type="email" id="regEmail" placeholder="e.g. courteney@student.edu.my" required>
+              </div>
+
+            </div>
+
+            <!-- Auto-Assigned Bib Preview -->
+            <div class="bib-preview-box">
+              <div>
+                <strong>Auto-Assigned Bib (Modulo-10 Check Digit):</strong>
+                <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">
+                  Category sequential number + verified check digit
+                </div>
+              </div>
+              <div class="bib-tag" id="previewAssignedBib">1001-6</div>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+              <button type="reset" class="btn btn-secondary btn-sm">Clear</button>
+              <button type="submit" class="btn btn-primary" id="btnSubmitRegistration">
+                💾 Register Runner &amp; Allocate Page
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- SECTION 2: RUNNER LIST, BIBS, RESULTS & CERTIFICATES -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3>📋 Runners, Bib &amp; Certificates (<span id="runnerCountBadge">0</span>)</h3>
+            <p style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
+              Lookup via MMU, view printable bib card, or print finisher certificate.
+            </p>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button id="btnSeedDemo" class="btn btn-secondary btn-sm" title="Reload demo runners">🌱 Seed Demo</button>
+            <button id="btnExportCsv" class="btn btn-success btn-sm">📥 Export CSV</button>
+          </div>
+        </div>
+
+        <div class="card-body" style="display:flex; flex-direction:column; gap:10px;">
+          <!-- Filter Search -->
+          <div style="display:flex; gap:8px;">
+            <input type="search" id="runnerSearchInput" placeholder="🔍 Search by name, matric no, or bib..." style="flex:2;">
+            <select id="runnerCategoryFilter" style="flex:1;">
+              <option value="">All Categories</option>
+              <option value="5K Fun Run">5K Fun Run</option>
+              <option value="10K Challenge">10K Challenge</option>
+              <option value="21K Half Marathon">21K Half Marathon</option>
+            </select>
+          </div>
+
+          <!-- Runner List Table -->
+          <div class="table-wrapper" style="max-height:360px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Bib #</th>
+                  <th>Runner &amp; Matric No.</th>
+                  <th>Category</th>
+                  <th>Finish Time</th>
+                  <th>RAM Status</th>
+                  <th style="text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="runnerListTableBody">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+          <div id="runnerEmptyState" style="display:none; text-align:center; padding:16px; color:var(--text-dim); font-size:0.85rem;">
+            No runners registered yet. Fill the form above or click "Seed Demo".
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 3: CHECK-IN & QR SCANNER -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3>📷 QR Check-In Scanner</h3>
+            <p style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
+              Scan runner QR code or click a test button to trigger hardware MMU lookup.
+            </p>
+          </div>
+          <span class="header-tag">03 / QR SCANNER</span>
+        </div>
+        <div class="card-body" style="display:flex; flex-direction:column; gap:12px;">
+          <!-- Camera Feed & Fallback -->
+          <div class="scanner-video-box" style="min-height:180px;">
+            <div id="reader"></div>
+            <div class="scanner-reticle" id="scannerReticle"></div>
+            <div id="cameraStatusMsg" style="color:var(--text-muted); font-size:0.8rem; z-index:2; text-align:center; padding:8px;">
+              📷 Camera standby. Use "Start Camera" or the 1-click test scan buttons below.
+            </div>
+          </div>
+
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <button id="btnToggleCamera" class="btn btn-secondary btn-sm">
+              🎥 Start Camera
+            </button>
+            <div style="display:flex; gap:6px; flex:1; min-width:200px;">
+              <input type="text" id="manualBibInput" placeholder="Enter Bib (e.g. 1001-6)" style="font-family:var(--font-mono); font-size:0.85rem;">
+              <button id="btnManualLookup" class="btn btn-primary btn-sm">
+                ⚡ MMU Lookup
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Scan Test Buttons -->
+          <div class="quick-scan-bar">
+            <div class="quick-scan-title">
+              <span>⚡ ONE-CLICK DEMO SCAN BUTTONS:</span>
+              <span style="color:var(--accent-cyan);">Click any bib to test scanning</span>
+            </div>
+            <div class="quick-scan-buttons" id="quickScanButtonsContainer">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Scanned Result Card -->
+          <div id="scannerResultCard" style="display:none; background:var(--bg-input); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-subtle); padding-bottom:8px; margin-bottom:8px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="bib-pill" id="scanResultBib">1001-6</span>
+                <strong id="scanResultName" style="color:#fff;">Courteney Jill Bobby</strong>
+                <span class="category-tag cat-5k" id="scanResultCat">5K Fun Run</span>
+              </div>
+              <div id="scanResultStatusBadge" class="status-badge status-valid">CHECKED IN</div>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; font-size:0.78rem; margin-bottom:10px;">
+              <div><span style="color:var(--text-dim);">Matric No:</span> <strong id="scanResultMatric">07DEE23F1046</strong></div>
+              <div><span style="color:var(--text-dim);">Email:</span> <strong id="scanResultEmail">courteney@student.edu.my</strong></div>
+              <div><span style="color:var(--text-dim);">Finish Time:</span> <strong id="scanResultTime" style="color:var(--accent-green);">00:24:18</strong></div>
+            </div>
+            <div style="display:flex; gap:6px; justify-content:flex-end;">
+              <button id="btnScanViewBib" class="btn btn-secondary btn-sm">🏷️ Bib &amp; QR</button>
+              <button id="btnScanRecordTime" class="btn btn-warning btn-sm">⏱️ Set Finish Time</button>
+              <button id="btnScanViewCert" class="btn btn-success btn-sm">🏆 Certificate</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ------------------------------------------------------------------------
+         RIGHT PANEL: LIVE OS MEMORY SUBSYSTEM (The OS Project Core)
+         ------------------------------------------------------------------------ -->
+    <section class="panel-column right-panel">
+
+      <!-- CARD 1: MMU HUD STATS & REPLACEMENT CONTROLS -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2>🖥️ OS Memory Management Unit (MMU)</h2>
+            <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">
+              Real demand paging with true page faults, LRU/FIFO evictions, and frames.
+            </p>
+          </div>
+          <span class="header-tag" id="hudActivePolicyTag">POLICY: LRU</span>
+        </div>
+
+        <div class="card-body">
+          <!-- Stats Grid -->
+          <div class="mmu-hud-stats">
+            <div class="stat-tile stat-hits">
+              <span class="stat-label">Page Hits</span>
+              <span class="stat-value" id="statHits">0</span>
+            </div>
+            <div class="stat-tile stat-faults">
+              <span class="stat-label">Page Faults</span>
+              <span class="stat-value" id="statFaults">0</span>
+            </div>
+            <div class="stat-tile stat-rate">
+              <span class="stat-label">Hit Rate</span>
+              <span class="stat-value" id="statHitRate">0.0%</span>
+            </div>
+            <div class="stat-tile stat-evict">
+              <span class="stat-label">Evictions</span>
+              <span class="stat-value" id="statEvictions">0</span>
+            </div>
+          </div>
+
+          <!-- Simulation Toolbar -->
+          <div class="mmu-toolbar">
+            <div class="toolbar-controls">
+              <!-- Policy -->
+              <div class="control-item">
+                <label for="mmuPolicySelect">Policy:</label>
+                <select id="mmuPolicySelect">
+                  <option value="LRU" selected>LRU (Least Recently Used)</option>
+                  <option value="FIFO">FIFO (First-In, First-Out)</option>
+                </select>
+              </div>
+
+              <!-- Frame count -->
+              <div class="control-item">
+                <label for="mmuFrameCountSelect">RAM Frames:</label>
+                <select id="mmuFrameCountSelect">
+                  <option value="3">3 Frames (Fast Evictions)</option>
+                  <option value="4" selected>4 Frames (Standard)</option>
+                  <option value="5">5 Frames</option>
+                  <option value="6">6 Frames</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="display:flex; gap:8px;">
+              <button id="btnHeavyLoad" class="btn btn-warning btn-sm" title="Simulate 8 rapid lookups">
+                ⚡ Heavy Load
+              </button>
+              <button id="btnFlushRAM" class="btn btn-secondary btn-sm" title="Clear physical RAM">
+                🧹 Flush RAM
+              </button>
+            </div>
+          </div>
+
+          <!-- Hardware Pipeline Display -->
+          <div class="translation-pipeline">
+            <div class="pipeline-header">
+              <span>Hardware Address Translation Pipeline</span>
+              <span id="pipelineClockTick">SIMULATION CLOCK: TICK #0</span>
+            </div>
+            <div class="pipeline-stages">
+              <div class="pipeline-stage">
+                <span class="stage-title">1. Logical Address</span>
+                <span class="stage-val" id="pipeLogicalAddr">&lt;Seg —, Offset —&gt;</span>
+              </div>
+              <div class="stage-arrow">➔</div>
+              <div class="pipeline-stage">
+                <span class="stage-title">2. Segment Check</span>
+                <span class="stage-val" id="pipeSegmentCheck">STANDBY</span>
+              </div>
+              <div class="stage-arrow">➔</div>
+              <div class="pipeline-stage">
+                <span class="stage-title">3. Linear Address</span>
+                <span class="stage-val" id="pipeLinearAddr">0x0000</span>
+              </div>
+              <div class="stage-arrow">➔</div>
+              <div class="pipeline-stage">
+                <span class="stage-title">4. Page Table Check</span>
+                <span class="stage-val" id="pipeVpnCheck">VPN #—</span>
+              </div>
+              <div class="stage-arrow">➔</div>
+              <div class="pipeline-stage">
+                <span class="stage-title">5. Physical Result</span>
+                <span class="stage-val" id="pipePhysResult">READY</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Physical RAM Frames Visualization -->
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <h4 style="font-size:0.8rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">
+                🧠 Physical RAM Frames (<span id="framesOccupiedCount">0</span> / <span id="framesTotalCount">4</span> In Use)
+              </h4>
+              <span style="font-size:0.7rem; font-family:var(--font-mono); color:var(--text-dim);">RAM SIZE: 1024 BYTES</span>
+            </div>
+            <div class="frames-grid" id="framesGridContainer">
+              <!-- Dynamically populated RAM frame cards -->
+            </div>
+          </div>
+
+          <!-- Replacement Order (FIFO/LRU queue) -->
+          <div class="replacement-queue-box">
+            <span class="queue-label" id="queueLabel">LRU Stack (Least ➔ Most Recent):</span>
+            <div class="queue-items" id="queueItemsContainer">
+              <span style="color:var(--text-dim); font-size:0.75rem;">RAM is currently empty</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- CARD 2: SEGMENT TABLE & LIVE PAGE TABLE -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3>📑 Memory Tables: Segmentation &amp; Paging</h3>
+            <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">
+              Segment Descriptor Table (Base &amp; Limit) and Live Page Table (Valid/Invalid bits).
+            </p>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btnToggleSegView">Toggle Segment Table</button>
+        </div>
+
+        <div class="card-body" style="display:flex; flex-direction:column; gap:14px;">
+          <!-- SEGMENT TABLE -->
+          <div id="segmentTableSection">
+            <h4 style="font-size:0.75rem; font-weight:700; color:var(--accent-purple); text-transform:uppercase; margin-bottom:6px;">
+              1. Segment Descriptor Table
+            </h4>
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Seg ID</th>
+                    <th>Segment Name</th>
+                    <th>Base Address</th>
+                    <th>Limit</th>
+                    <th>Protection</th>
+                    <th>Records</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody id="segmentTableBody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- LIVE PAGE TABLE -->
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <h4 style="font-size:0.75rem; font-weight:700; color:var(--accent-cyan); text-transform:uppercase;">
+                2. Live Page Table (<span id="pageTableCount">0</span> Virtual Pages)
+              </h4>
+              <span style="font-size:0.7rem; color:var(--text-dim);">
+                V: 1=RAM, 0=Disk | M: Dirty | R: Referenced
+              </span>
+            </div>
+            <div class="table-wrapper" style="max-height:220px;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>VPN #</th>
+                    <th>Bib #</th>
+                    <th>Runner</th>
+                    <th>Category</th>
+                    <th>Valid (V)</th>
+                    <th>Frame #</th>
+                    <th>Dirty (M)</th>
+                    <th>Ref (R)</th>
+                    <th>Disk Sector</th>
+                  </tr>
+                </thead>
+                <tbody id="pageTableBody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- SECONDARY STORAGE (DISK SWAP) -->
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <h4 style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">
+                💾 Secondary Storage (Disk Swap — <span id="diskPagesCount">0</span> Swapped Pages)
+              </h4>
+              <span style="font-size:0.7rem; color:var(--text-dim);">Unloaded pages reside here</span>
+            </div>
+            <div class="table-wrapper" style="max-height:140px;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Disk Sector</th>
+                    <th>VPN #</th>
+                    <th>Bib #</th>
+                    <th>Runner</th>
+                    <th>Category</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="diskSwapTableBody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- CARD 3: REAL-TIME KERNEL ACTIVITY LOG -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3>📟 Kernel Activity Stream (Console)</h3>
+            <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">
+              Diagnostic event trace capturing bounds checks, traps, interrupts, evictions, and disk I/O.
+            </p>
+          </div>
+          <button id="btnClearLog" class="btn btn-secondary btn-sm">Clear</button>
+        </div>
+        <div class="card-body" style="padding:0;">
+          <div class="mmu-log-console">
+            <div class="log-console-header">
+              <span class="log-title">REAL-TIME MEMORY TRACE (TERMINAL)</span>
+              <span style="font-size:0.65rem; color:var(--accent-green);">● LIVE FEED</span>
+            </div>
+            <div class="log-console-body" id="mmuConsoleLogs">
+              <!-- Dynamically populated logs -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ============================================================================
+       PRINTABLE OFFICIAL RUNNER BIB CARD MODAL
+       ============================================================================ -->
+  <div class="modal-backdrop" id="bibModalBackdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Official Printable Race Bib</h3>
+        <button class="modal-close" id="btnCloseBibModal">&times;</button>
+      </div>
+      <div class="modal-body" style="background:#0b1120; padding:20px;">
+        <div class="bib-card-view" id="bibCardContainer">
+          <!-- Pin holes -->
+          <div class="bib-hole tl"></div>
+          <div class="bib-hole tr"></div>
+          <div class="bib-hole bl"></div>
+          <div class="bib-hole br"></div>
+
+          <!-- Top Event Header -->
+          <div class="bib-top-bar">
+            <div>
+              <div class="bib-event-title">COMMUNITY RUN 2026</div>
+              <div style="font-size:0.65rem; color:#6b7280; font-weight:700;">GROUP 3 OS VIRTUAL MEMORY LAB</div>
+            </div>
+            <div class="bib-category-banner bib-cat-5k" id="modalBibCatBanner">5K FUN RUN</div>
+          </div>
+
+          <!-- Center Bib & QR -->
+          <div class="bib-center">
+            <div class="bib-number-display" id="modalBibNumber">1001-6</div>
+            <div class="bib-qr-box" id="modalBibQrBox"></div>
+          </div>
+
+          <!-- Runner details -->
+          <div class="bib-runner-details">
+            <div>
+              <div style="font-size:0.68rem; color:#6b7280; font-weight:700; text-transform:uppercase;">OFFICIAL PARTICIPANT</div>
+              <div class="bib-runner-name" id="modalBibRunnerName">COURTENEY JILL BOBBY</div>
+              <div style="font-size:0.75rem; color:#4b5563; font-weight:600;" id="modalBibMatric">NO. MATRIK: 07DEE23F1046</div>
+            </div>
+            <div class="bib-check-digit-info">
+              <span>WEIGHTED CHECK DIGIT VERIFIED</span><br>
+              <strong id="modalBibCheckFormula">MOD-10: VALID</strong>
+            </div>
+          </div>
+
+          <!-- Bottom strip -->
+          <div class="bib-bottom-strip">
+            <span>OFFICIAL TIMING CHIP BIB</span>
+            <span>NOT TRANSFERABLE</span>
+            <span>CR2026-CHIP-RFID</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btnCloseBibModal2">Close</button>
+        <button class="btn btn-primary" id="btnPrintBib">🖨️ Print Bib Card</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================================
+       PRINTABLE FINISHER CERTIFICATE MODAL (A4 LANDSCAPE)
+       ============================================================================ -->
+  <div class="modal-backdrop" id="certModalBackdrop">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <h3>Official Finisher Certificate (A4 Landscape)</h3>
+        <button class="modal-close" id="btnCloseCertModal">&times;</button>
+      </div>
+      <div class="modal-body" style="background:#0b1120; padding:20px;">
+        <div class="cert-container" id="certContainer">
+          <div class="cert-inner-border">
+            <!-- Decorative Corners -->
+            <div class="cert-corner-decor tl"></div>
+            <div class="cert-corner-decor tr"></div>
+            <div class="cert-corner-decor bl"></div>
+            <div class="cert-corner-decor br"></div>
+
+            <div class="cert-kicker">COMMUNITY RUN 2026 · OFFICIAL FINISHER</div>
+            <h1 class="cert-title">Certificate of Achievement</h1>
+            <p class="cert-subtitle">This certificate is proudly awarded to</p>
+
+            <div class="cert-name" id="certRunnerName">Courteney Jill Bobby</div>
+            <div style="font-size:0.85rem; color:#64748b; margin-top:-10px; margin-bottom:14px; font-weight:600;" id="certRunnerMatric">
+              Matric No: 07DEE23F1046
+            </div>
+
+            <p class="cert-body-text">
+              for successfully completing the official distance at the <strong>Community Run: Dynamic Registration &amp; Result Fetching Event</strong> with all timing checkpoints verified.
+            </p>
+
+            <!-- Metrics Grid -->
+            <div class="cert-details-grid">
+              <div class="cert-detail-item">
+                <span class="cert-detail-label">Runner Bib</span>
+                <span class="cert-detail-val" id="certBib">1001-6</span>
+              </div>
+              <div class="cert-detail-item">
+                <span class="cert-detail-label">Race Category</span>
+                <span class="cert-detail-val" id="certCategory">5K Fun Run</span>
+              </div>
+              <div class="cert-detail-item">
+                <span class="cert-detail-label">Official Chip Time</span>
+                <span class="cert-detail-val time-val" id="certFinishTime">00:24:18</span>
+              </div>
+              <div class="cert-detail-item">
+                <span class="cert-detail-label">Status</span>
+                <span class="cert-detail-val" style="color:#0284c7;">OFFICIAL FINISHER</span>
+              </div>
+            </div>
+
+            <!-- Footer: QR Verification & Signature -->
+            <div class="cert-footer-row">
+              <div class="cert-qr-verify">
+                <div class="cert-qr-canvas" id="certQrCanvasBox"></div>
+                <div class="cert-qr-desc">
+                  <strong>SCAN TO VERIFY</strong><br>
+                  Authenticity verified via MMU hash<br>
+                  <span id="certHashSignature" style="font-family:var(--font-mono); font-size:0.65rem;">CR-2026-HASH-0xA18F</span>
+                </div>
+              </div>
+
+              <div class="cert-signature-box">
+                <div class="cert-sig-line"></div>
+                <div class="cert-sig-name">Race Director</div>
+                <div class="cert-sig-title">Group 3 Organizing Committee</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btnCloseCertModal2">Close</button>
+        <button class="btn btn-primary" id="btnPrintCert">🖨️ Print Certificate (A4)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================================
+       PRESENTATION GUIDE MODAL (HOW TO DEMO)
+       ============================================================================ -->
+  <div class="modal-backdrop" id="guideModalBackdrop">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <h3>🎓 Group 3 OS Presentation Guide: How to Demo Memory Management</h3>
+        <button class="modal-close" id="btnCloseGuideModal">&times;</button>
+      </div>
+      <div class="modal-body" style="max-height:75vh;">
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:18px;">
+          Follow this simple step-by-step presentation script to demonstrate <strong>Segmentation</strong> and <strong>Demand Paging with True Page Faults &amp; Evictions</strong>:
+        </p>
+
+        <div class="demo-guide-step">
+          <div class="step-num-badge">1</div>
+          <div class="step-content">
+            <h4>Explain the Architecture</h4>
+            <p>Show the evaluators the <strong>Single-Page Two-Panel View</strong>: Left side is the Community Run desk (Registration, Runners, Bib &amp; QR, Certificate). Right side is the OS Memory Management Unit (MMU).</p>
+            <div class="step-script">
+              🗣️ <em>Say:</em> "Our simulation combines segmentation and demand paging. Every runner lookup passes through the Segment Descriptor Table, checks bounds against the limit register, and queries the live Page Table."
+            </div>
+          </div>
+        </div>
+
+        <div class="demo-guide-step">
+          <div class="step-num-badge">2</div>
+          <div class="step-content">
+            <h4>Show Initial State (Pages on Secondary Storage)</h4>
+            <p>Point to the <strong>Physical RAM Frames</strong> (empty) and <strong>Secondary Storage (Disk Swap Space)</strong>: all registered runners reside on disk with <code>Valid Bit = 0</code>.</p>
+            <div class="step-script">
+              🗣️ <em>Say:</em> "In demand paging, pages are not brought into RAM until referenced. Initially, all runner records reside on disk swap."
+            </div>
+          </div>
+        </div>
+
+        <div class="demo-guide-step">
+          <div class="step-num-badge">3</div>
+          <div class="step-content">
+            <h4>Trigger the First Page Fault</h4>
+            <p>Under <strong>QR Check-In Scanner</strong>, click the test button <code>[⚡ Scan Bib 1001-6]</code>. Watch the red <strong>PAGE FAULT</strong> flash! The MMU traps to INT 14, loads the page from disk into Frame #0, sets Valid Bit = 1, and displays the runner profile.</p>
+            <div class="step-script">
+              🗣️ <em>Say:</em> "Because Page #0 has Valid Bit = 0, a Page Fault occurred. The OS kernel allocated free Frame #0, loaded the record from secondary storage, and updated the Page Table."
+            </div>
+          </div>
+        </div>
+
+        <div class="demo-guide-step">
+          <div class="step-num-badge">4</div>
+          <div class="step-content">
+            <h4>Demonstrate an Instant Page Hit</h4>
+            <p>Click <code>[⚡ Scan Bib 1001-6]</code> again. Watch the green <strong>PAGE HIT</strong> flash! Notice that the Hit counter increments, hit rate updates, and access occurs immediately from RAM without disk I/O.</p>
+            <div class="step-script">
+              🗣️ <em>Say:</em> "Now that Page #0 is resident in RAM with Valid Bit = 1, the MMU retrieves it directly with zero disk latency. The LRU timestamp and reference bit are updated."
+            </div>
+          </div>
+        </div>
+
+        <div class="demo-guide-step">
+          <div class="step-num-badge">5</div>
+          <div class="step-content">
+            <h4>Fill Frames &amp; Trigger Eviction</h4>
+            <p>Click bibs <code>1002-9</code>, <code>2001-9</code>, and <code>3001-2</code>. All 4 RAM frames are now full! Now click bib <code>1003-2</code>. Because RAM is full, the OS executes the <strong>Page Replacement Policy</strong> (FIFO or LRU), evicts the victim page back to disk, and places the new page into the freed frame!</p>
+            <div class="step-script">
+              🗣️ <em>Say:</em> "Under LRU, the least recently used frame is selected as the victim. Watch the amber eviction indicator and the live update in the Page Table and FIFO/LRU queue."
+            </div>
+          </div>
+        </div>
+
+        <div class="demo-guide-step">
+          <div class="step-num-badge">6</div>
+          <div class="step-content">
+            <h4>Demonstrate Dirty Bit (M = 1) &amp; Heavy Load</h4>
+            <p>Click <strong>⏱️ Time</strong> on any runner to enter a finish time. Point to the Page Table: <strong>Dirty Bit M becomes 1</strong>! If that page is evicted later, the OS flushes changes to disk. Next, click <strong>⚡ Heavy Load</strong> to show automated rapid lookups and frame churning.</p>
+          </div>
+        </div>
+
+        <div class="demo-guide-step">
+          <div class="step-num-badge">7</div>
+          <div class="step-content">
+            <h4>Print Bib Card &amp; Finisher Certificate</h4>
+            <p>Click <strong>🏷️ Bib</strong> to preview and print the official race bib card with QR code. Click <strong>🏆 Cert</strong> to preview and print the official A4 Landscape Finisher Certificate.</p>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="btnCloseGuideModal2">Got it! Ready to Demo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Scripts -->
+  <script src="js/qr-helper.js"></script>
+  <script src="js/memory-system.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
